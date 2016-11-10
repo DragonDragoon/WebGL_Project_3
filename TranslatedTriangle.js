@@ -9,12 +9,31 @@ var VSHADER_SOURCE =
 
 // Fragment shader program
 var FSHADER_SOURCE =
+  'precision mediump float;\n' +
+  'uniform vec4 u_FragColor;\n' +
   'void main() {\n' +
-  '  gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);\n' +
+  '  gl_FragColor = u_FragColor;\n' +
   '}\n';
 
 // The translation distance for x, y, and z direction
-var Tx = 0.5, Ty = 0.5, Tz = 0.0;
+var T = [
+//[   x,    y,   z]
+  [ 0.5,  0.5, 0.0],
+  [-0.5,  0.5, 0.0],
+  [ 0.5, -0.5, 0.0],
+  [-0.5, -0.5, 0.0]
+];
+
+// Hold the color data for each triangle
+var C = [
+  new Float32Array([1.0, 0.0, 0.0, 1.0]),
+  new Float32Array([0.0, 1.0, 0.0, 1.0]),
+  new Float32Array([0.0, 0.0, 1.0, 1.0]),
+  new Float32Array([0.5, 0.5, 0.5, 1.0])
+];
+
+var _vertices = [];
+var _n = 0; // The number of vertices
 
 function main() {
   // Retrieve <canvas> element
@@ -33,6 +52,14 @@ function main() {
     return;
   }
 
+  for (var i = 0; i < T.length; i++) {
+    // Push new vertices (triangle)
+    _vertices.push(
+      0, 0.5,   -0.5, -0.5,   0.5, -0.5
+    );
+    _n = _n + 3; // The number of vertices
+  }
+
   // Write the positions of vertices to a vertex shader
   var n = initVertexBuffers(gl);
   if (n < 0) {
@@ -46,7 +73,13 @@ function main() {
     console.log('Failed to get the storage location of u_Translation');
     return;
   }
-  gl.uniform4f(u_Translation, Tx, Ty, Tz, 0.0);
+
+  // Pass the color vector
+  var u_FragColor = gl.getUniformLocation(gl.program, 'u_FragColor');
+  if (!u_FragColor) {
+    console.log('Failed to get the storage location of u_FragColor');
+    return;
+  }
 
   // Specify the color for clearing <canvas>
   gl.clearColor(0, 0, 0, 1);
@@ -54,15 +87,25 @@ function main() {
   // Clear <canvas>
   gl.clear(gl.COLOR_BUFFER_BIT);
 
-  // Draw the rectangle
-  gl.drawArrays(gl.TRIANGLES, 0, n);
+  // Hold current triangle number
+  var currentTriangle = 0;
+  for (var i = 0; i < T.length; i++) {
+    gl.uniform4f(u_Translation, T[i][0], T[i][1], T[i][2], 0.0);
+
+    // Set color of triangle
+    gl.uniform4fv(u_FragColor, C[i]);
+
+    // Draw the rectangle
+    gl.drawArrays(gl.TRIANGLES, currentTriangle, 3);
+
+    // Go to next triangle in vertex array
+    currentTriangle += 3;
+  }
 }
 
 function initVertexBuffers(gl) {
-  var vertices = new Float32Array([
-    0, 0.5,   -0.5, -0.5,   0.5, -0.5
-  ]);
-  var n = 3; // The number of vertices
+  var vertices = new Float32Array(_vertices);
+  var n = _n; // The number of vertices
 
   // Create a buffer object
   var vertexBuffer = gl.createBuffer();
