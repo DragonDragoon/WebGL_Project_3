@@ -9,12 +9,22 @@ var VSHADER_SOURCE =
 
 // Fragment shader program
 var FSHADER_SOURCE =
+  'precision mediump float;\n' +
+  'uniform vec4 u_FragColor;\n' +
   'void main() {\n' +
-  '  gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);\n' +
+  '  gl_FragColor = u_FragColor;\n' +
   '}\n';
 
 // Rotation angle (degrees/second)
 var ANGLE_STEP = 45.0;
+
+// Hold the color data for each triangle
+var C = [
+  new Float32Array([1.0, 0.0, 0.0, 1.0]),
+  new Float32Array([0.0, 1.0, 0.0, 1.0]),
+  new Float32Array([0.0, 0.0, 1.0, 1.0]),
+  new Float32Array([0.5, 0.5, 0.5, 1.0])
+];
 
 function main() {
   // Retrieve <canvas> element
@@ -50,15 +60,28 @@ function main() {
     return;
   }
 
+  // Pass the color vector
+  var u_FragColor = gl.getUniformLocation(gl.program, 'u_FragColor');
+  if (!u_FragColor) {
+    console.log('Failed to get the storage location of u_FragColor');
+    return;
+  }
+
   // Current rotation angle
   var currentAngle = 0.0;
+
+  // Current color
+  var currentColor = C[0];
+
   // Model matrix
   var modelMatrix = new Matrix4();
 
   // Start drawing
   var tick = function() {
-    currentAngle = animate(currentAngle);  // Update the rotation angle
-    draw(gl, n, currentAngle, modelMatrix, u_ModelMatrix);   // Draw the triangle
+    var animationData = animate(currentAngle);  // Update the animation data
+    currentAngle = animationData.angle; // Update roatation angle from animation data
+    currentColor = animationData.color; // Update the color from animation data
+    draw(gl, n, currentAngle, modelMatrix, u_ModelMatrix, currentColor, u_FragColor);   // Draw the triangle
     requestAnimationFrame(tick, canvas); // Request that the browser calls tick
   };
   tick();
@@ -96,7 +119,7 @@ function initVertexBuffers(gl) {
   return n;
 }
 
-function draw(gl, n, currentAngle, modelMatrix, u_ModelMatrix) {
+function draw(gl, n, currentAngle, modelMatrix, u_ModelMatrix, currentColor, u_FragColor) {
   // Set the rotation matrix
   modelMatrix.setRotate(currentAngle, 0, 0, 1); // Rotation angle, rotation axis (0, 0, 1)
  
@@ -105,6 +128,9 @@ function draw(gl, n, currentAngle, modelMatrix, u_ModelMatrix) {
 
   // Clear <canvas>
   gl.clear(gl.COLOR_BUFFER_BIT);
+
+  // Set color of triangle
+  gl.uniform4fv(u_FragColor, currentColor);
 
   // Draw the rectangle
   gl.drawArrays(gl.TRIANGLES, 0, n);
@@ -117,7 +143,30 @@ function animate(angle) {
   var now = Date.now();
   var elapsed = now - g_last;
   g_last = now;
+
   // Update the current rotation angle (adjusted by the elapsed time)
-  var newAngle = angle + (ANGLE_STEP * elapsed) / 1000.0;
-  return newAngle %= 360;
+  var newAngle;
+  if (angle >= 180 && angle <= 360) {
+    newAngle = angle + (2 * ANGLE_STEP * elapsed) / 1000.0;
+  } else {
+    newAngle = angle + (ANGLE_STEP * elapsed) / 1000.0;
+  }
+
+  // Update the current color by rotation
+  var newColor;
+  if (angle >= 0 && angle < 90) {
+    newColor = C[0];
+  } else if (angle >= 90 && angle < 180) {
+    newColor = C[1];
+  } else if (angle >= 180 && angle < 270) {
+    newColor = C[2];
+  } else {
+    newColor = C[3];
+  }
+
+  // Return animation data
+  return {
+    "angle": newAngle %= 360, 
+    "color": newColor
+  };
 }
