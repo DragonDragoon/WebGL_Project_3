@@ -9,9 +9,37 @@ var VSHADER_SOURCE =
 
 // Fragment shader program
 var FSHADER_SOURCE =
+  'precision mediump float;\n' +
+  'uniform vec4 u_FragColor;\n' +
   'void main() {\n' +
-  '  gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);\n' +
+  '  gl_FragColor = u_FragColor;\n' +
   '}\n';
+
+// The translation distance for x, y, and z direction
+var T = [
+//[   x,    y,   z]
+  [0.0, -0.5, 0.0],
+  [0.5, 0.0, 0.0],
+  [0.0, 0.5, 0.0],
+  [-0.5, 0.0, 0.0]
+];
+
+// The rotation angle
+var ANGLES = [
+  0.0, 90.0, 180.0, 270.0
+];
+
+// Hold the color data for each triangle
+var C = [
+  new Float32Array([1.0, 0.0, 0.0, 1.0]),
+  new Float32Array([0.0, 1.0, 0.0, 1.0]),
+  new Float32Array([0.0, 0.0, 1.0, 1.0]),
+  new Float32Array([0.5, 0.5, 0.5, 1.0])
+];
+
+// Hold the raw vertices
+var _vertices = [];
+var _n = 0; // The number of vertices
 
 function main() {
   // Retrieve <canvas> element
@@ -30,6 +58,14 @@ function main() {
     return;
   }
 
+  for (var i = 0; i < T.length; i++) {
+    // Push new vertices (triangle)
+    _vertices.push(
+      0, 0.3,   -0.3, -0.3,   0.3, -0.3
+    );
+    _n = _n + 3; // The number of vertices
+  }
+
   // Write the positions of vertices to a vertex shader
   var n = initVertexBuffers(gl);
   if (n < 0) {
@@ -40,19 +76,19 @@ function main() {
   // Create Matrix4 object for model transformation
   var modelMatrix = new Matrix4();
 
-  // Calculate a model matrix
-  var ANGLE = 60.0; // The rotation angle
-  var Tx = 0.5;     // Translation distance
-  modelMatrix.setRotate(ANGLE, 0, 0, 1);  // Set rotation matrix
-  modelMatrix.translate(Tx, 0, 0);        // Multiply modelMatrix by the calculated translation matrix
-
   // Pass the model matrix to the vertex shader
   var u_ModelMatrix = gl.getUniformLocation(gl.program, 'u_ModelMatrix');
   if (!u_ModelMatrix) {
     console.log('Failed to get the storage location of u_xformMatrix');
     return;
   }
-  gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+
+  // Pass the color vector
+  var u_FragColor = gl.getUniformLocation(gl.program, 'u_FragColor');
+  if (!u_FragColor) {
+    console.log('Failed to get the storage location of u_FragColor');
+    return;
+  }
 
   // Specify the color for clearing <canvas>
   gl.clearColor(0, 0, 0, 1);
@@ -60,15 +96,33 @@ function main() {
   // Clear <canvas>
   gl.clear(gl.COLOR_BUFFER_BIT);
 
-  // Draw the rectangle
-  gl.drawArrays(gl.TRIANGLES, 0, n);
+  // Hold current triangle number
+  var currentTriangle = 0;
+  for (var i = 0; i < T.length; i++) {
+    // Calculate a model matrix
+    var ANGLE = ANGLES[i]; // The rotation angle
+    var Tx = T[i][0];     // Translation distance x
+    var Ty = T[i][1];     // Translation distance y
+
+    modelMatrix.setTranslate(Tx, Ty, 0); // Set translation matrix
+    modelMatrix.rotate(ANGLE, 0, 0, 1);  // Multiply modelMatrix by the calculated rotation matrix
+
+    gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+
+    // Set color of triangle
+    gl.uniform4fv(u_FragColor, C[i]);
+
+    // Draw the rectangle
+    gl.drawArrays(gl.TRIANGLES, currentTriangle, 3);
+
+    // Go to next triangle in vertex array
+    currentTriangle += 3;
+  }
 }
 
 function initVertexBuffers(gl) {
-  var vertices = new Float32Array([
-    0, 0.3,   -0.3, -0.3,   0.3, -0.3
-  ]);
-  var n = 3; // The number of vertices
+  var vertices = new Float32Array(_vertices);
+  var n = _n; // The number of vertices
 
   // Create a buffer object
   var vertexBuffer = gl.createBuffer();
