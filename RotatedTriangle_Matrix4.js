@@ -1,4 +1,4 @@
-// ScaledTriangle_Matrix.js (c) 2012 matsuda
+// RotatedTriangle_Matrix4.js (c) 2012 matsuda
 // Vertex shader program
 var VSHADER_SOURCE =
   'attribute vec4 a_Position;\n' +
@@ -9,32 +9,9 @@ var VSHADER_SOURCE =
 
 // Fragment shader program
 var FSHADER_SOURCE =
-  'precision mediump float;\n' +
-  'uniform vec4 u_FragColor;\n' +
   'void main() {\n' +
-  '  gl_FragColor = u_FragColor;\n' +
+  '  gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);\n' +
   '}\n';
-
-// The scaling factor
-var S = [
-//[  x,   y,   z]
-  [1.5, 2.0, 1.0], // Non-uniform
-  [1.0, 1.5, 1.0], // Non-uniform
-  [1.5, 1.0, 1.0], // Non-uniform
-  [0.5, 0.5, 1.0]  // Uniform
-];
-
-// Hold the color data for each triangle
-var C = [
-  new Float32Array([0.0, 1.0, 0.0, 1.0]),
-  new Float32Array([1.0, 0.0, 0.0, 1.0]),
-  new Float32Array([0.0, 0.0, 1.0, 1.0]),
-  new Float32Array([0.5, 0.5, 0.5, 1.0])
-];
-
-// Hold the raw vertices
-var _vertices = [];
-var _n = 0; // The number of vertices
 
 function main() {
   // Retrieve <canvas> element
@@ -53,14 +30,6 @@ function main() {
     return;
   }
 
-  for (var i = 0; i < S.length; i++) {
-    // Push new vertices (triangle)
-    _vertices.push(
-      0, 0.5,   -0.5, -0.5,   0.5, -0.5
-    );
-    _n = _n + 3; // The number of vertices
-  }
- 
   // Write the positions of vertices to a vertex shader
   var n = initVertexBuffers(gl);
   if (n < 0) {
@@ -68,19 +37,20 @@ function main() {
     return;
   }
 
+  // Create Matrix4 object for the rotation matrix
+  var xformMatrix = new Matrix4();
+
+  // Set the rotation matrix
+  var ANGLE = 90.0; // The rotation angle
+  xformMatrix.setRotate(ANGLE, 0, 0, 1);
+
   // Pass the rotation matrix to the vertex shader
   var u_xformMatrix = gl.getUniformLocation(gl.program, 'u_xformMatrix');
   if (!u_xformMatrix) {
     console.log('Failed to get the storage location of u_xformMatrix');
     return;
   }
-  
-  // Pass the color vector
-  var u_FragColor = gl.getUniformLocation(gl.program, 'u_FragColor');
-  if (!u_FragColor) {
-    console.log('Failed to get the storage location of u_FragColor');
-    return;
-  }
+  gl.uniformMatrix4fv(u_xformMatrix, false, xformMatrix.elements);
 
   // Specify the color for clearing <canvas>
   gl.clearColor(0, 0, 0, 1);
@@ -88,33 +58,15 @@ function main() {
   // Clear <canvas>
   gl.clear(gl.COLOR_BUFFER_BIT);
 
-  // Hold current triangle number
-  var currentTriangle = 0;
-  for (var i = 0; i < S.length; i++) {
-    // Note: WebGL is column major order
-    var xformMatrix = new Float32Array([
-        S[i][0],     0.0,     0.0, 0.0,
-            0.0, S[i][1],     0.0, 0.0,
-            0.0,     0.0, S[i][2], 0.0,
-            0.0,     0.0,     0.0, 1.0
-    ]);
-
-    gl.uniformMatrix4fv(u_xformMatrix, false, xformMatrix);
-
-    // Set color of triangle
-    gl.uniform4fv(u_FragColor, C[i]);
-
-    // Draw the rectangle
-    gl.drawArrays(gl.TRIANGLES, currentTriangle, 3);
-
-    // Go to next triangle in vertex array
-    currentTriangle += 3;
-  }
+  // Draw the rectangle
+  gl.drawArrays(gl.TRIANGLES, 0, n);
 }
 
 function initVertexBuffers(gl) {
-  var vertices = new Float32Array(_vertices);
-  var n = _n; // The number of vertices
+  var vertices = new Float32Array([
+    0, 0.5,   -0.5, -0.5,   0.5, -0.5
+  ]);
+  var n = 3; // The number of vertices
 
   // Create a buffer object
   var vertexBuffer = gl.createBuffer();
@@ -141,3 +93,4 @@ function initVertexBuffers(gl) {
 
   return n;
 }
+
