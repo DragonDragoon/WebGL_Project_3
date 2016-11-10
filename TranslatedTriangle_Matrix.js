@@ -15,9 +15,13 @@ var FSHADER_SOURCE =
   '  gl_FragColor = u_FragColor;\n' +
   '}\n';
 
-// The rotation angle
-var ANGLE = [
-  90.0, 45.0, 22.5, 11.25
+// The translation distance for x, y, and z direction
+var T = [
+//[   x,    y,   z]
+  [0.5, 0.5, 0.0],
+  [-0.5, 0.5, 0.0],
+  [0.5, -0.5, 0.0],
+  [-0.5, -0.5, 0.0]
 ];
 
 // Hold the color data for each triangle
@@ -49,7 +53,7 @@ function main() {
     return;
   }
 
-  for (var i = 0; i < ANGLE.length; i++) {
+  for (var i = 0; i < T.length; i++) {
     // Push new vertices (triangle)
     _vertices.push(
       0, 0.5,   -0.5, -0.5,   0.5, -0.5
@@ -86,17 +90,13 @@ function main() {
 
   // Hold current triangle number
   var currentTriangle = 0;
-  for (var i = 0; i < ANGLE.length; i++) {
-    // Create a rotation matrix
-    var radian = Math.PI * ANGLE[i] / 180.0; // Convert to radians
-    var cosB = Math.cos(radian), sinB = Math.sin(radian);
-
+  for (var i = 0; i < T.length; i++) {
     // Note: WebGL is column major order
     var xformMatrix = new Float32Array([
-       cosB, sinB, 0.0, 0.0,
-      -sinB, cosB, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0
+            1.0,     0.0,     0.0, 0.0,
+            0.0,     1.0,     0.0, 0.0,
+            0.0,     0.0,     1.0, 0.0,
+        T[i][0], T[i][1], T[i][2], 1.0
     ]);
 
     gl.uniformMatrix4fv(u_xformMatrix, false, xformMatrix);
