@@ -32,6 +32,7 @@ var C = [
   new Float32Array([0.5, 0.5, 0.5, 1.0])
 ];
 
+// Hold the raw vertices
 var _vertices = [];
 var _n = 0; // The number of vertices
 
